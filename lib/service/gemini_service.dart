@@ -16,7 +16,7 @@ class GeminiService {
     final apiKey = Env.geminiApiKey;
     if (apiKey.isNotEmpty && !apiKey.contains("YOUR")) {
       // We use the modern 'gemini-1.5-flash' model from your example.
-      _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
       _isInitialized = true;
     } else {
       print(
@@ -45,6 +45,19 @@ class GeminiService {
     }
   }
 
+  String _cleanJsonString(String rawJson) {
+    // The Gemini API may wrap the JSON in markdown code blocks.
+    // This removes the wrapping '```json' and '```' if present.
+    final startIndex = rawJson.indexOf('{');
+    final endIndex = rawJson.lastIndexOf('}');
+
+    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+      return rawJson.substring(startIndex, endIndex + 1);
+    }
+    // Return the original string if it doesn't appear to be wrapped.
+    return rawJson;
+  }
+
   Future<NutritionInfo?> getNutritionInfoFromGemini(String foodName) async {
     if (!_isInitialized) {
       return null;
@@ -58,7 +71,8 @@ class GeminiService {
       final response = await _model.generateContent(content);
 
       if (response.text != null) {
-        final jsonResponse = json.decode(response.text!);
+        final cleanedJson = _cleanJsonString(response.text!);
+        final jsonResponse = json.decode(cleanedJson);
         jsonResponse['name'] = foodName;
         return NutritionInfo.fromJson(jsonResponse);
       }

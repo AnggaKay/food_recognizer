@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:foodrecognizer/service/image_service.dart';
 import 'package:foodrecognizer/ui/camera_screen.dart';
-import 'package:foodrecognizer/widget/action_buttons.dart';
-import 'package:foodrecognizer/widget/image_preview.dart';
-import 'package:foodrecognizer/widget/picker_buttons.dart';
-import 'package:foodrecognizer/widget/result_display.dart';
 import 'package:foodrecognizer/controller/photo_picker_controller.dart';
 import 'package:provider/provider.dart';
+import 'package:foodrecognizer/model/analysis_result.dart';
+import 'package:foodrecognizer/ui/theme/app_theme.dart';
 
 /// A screen that allows users to pick, crop, and analyze images.
 class PhotoPickerScreen extends StatefulWidget {
@@ -48,7 +46,7 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
     );
 
     if (source != null) {
-      await controller.pickImage(context, source);
+      await controller.pickImage(source);
     }
   }
 
@@ -61,55 +59,211 @@ class _PhotoPickerScreenState extends State<PhotoPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final controller = context.watch<PhotoPickerController>();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Food Recognizer App')),
-      backgroundColor: const Color(0xFFF0F2F5),
-      body: Consumer<PhotoPickerController>(
-        builder: (context, controller, child) {
-          return Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ImagePreview(
-                      image: controller.image,
-                      onTap: () => _showImageSourceDialog(context),
-                    ),
-                    const SizedBox(height: 24),
-                    if (controller.serviceError != null)
-                      Text(
-                        controller.serviceError!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.red, fontSize: 16),
-                      )
-                    else if (controller.analysisResult != null)
-                      ResultDisplay(result: controller.analysisResult!)
-                    else if (controller.image != null)
-                      ActionButtons(
-                        onAnalyze: () => controller.analyzeImage(context),
-                        onCrop: () => controller.cropImage(context),
-                      )
-                    else
-                      PickerButtons(
-                        onPickImage: (source) =>
-                            controller.pickImage(context, source),
-                        onLiveFeed: () => _navigateToLiveFeed(context),
-                      ),
-                  ],
-                ),
-              ),
-              if (controller.isLoading)
-                Container(
-                  color: Colors.black.withOpacity(0.5),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-            ],
-          );
-        },
+      appBar: AppBar(
+        title: const Text('Food Recognizer'),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
       ),
+      backgroundColor: const Color(0xFFF0F2F5),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _ScreenContent(),
+                const SizedBox(height: 24),
+                _BottomSection(controller: controller),
+              ],
+            ),
+          ),
+          if (controller.isLoading) const _LoadingOverlay(),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScreenContent extends StatelessWidget {
+  const _ScreenContent();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<PhotoPickerController>();
+    if (controller.image != null) {
+      return _ImagePreview(image: controller.image!);
+    } else {
+      return const _ImagePlaceholder();
+    }
+  }
+}
+
+class _ImagePreview extends StatelessWidget {
+  const _ImagePreview({required this.image});
+  final File image;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 4,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Image.file(image, fit: BoxFit.cover, height: 300),
+    );
+  }
+}
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () =>
+          context.read<PhotoPickerController>().showImageSourceDialog(context),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          height: 300,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.camera_alt, size: 60, color: Colors.grey[600]),
+              const SizedBox(height: 16),
+              Text(
+                "Tap to select an image",
+                style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomSection extends StatelessWidget {
+  const _BottomSection({required this.controller});
+  final PhotoPickerController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.serviceError != null) {
+      return Text(
+        controller.serviceError!,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.red, fontSize: 16),
+      );
+    }
+    if (controller.analysisResult != null) {
+      return _ResultDisplay(result: controller.analysisResult!);
+    }
+    if (controller.image != null) {
+      return _ActionButtons();
+    }
+    return const _PickerButtons();
+  }
+}
+
+class _ActionButtons extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.read<PhotoPickerController>();
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        ElevatedButton.icon(
+          icon: const Icon(Icons.crop),
+          label: const Text('Crop'),
+          onPressed: () => controller.cropImage(context),
+          style: AppTheme.themeData.elevatedButtonTheme.style,
+        ),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.science),
+          label: const Text('Analyze'),
+          onPressed: () => controller.analyzeImage(context),
+          style: AppTheme.themeData.elevatedButtonTheme.style,
+        ),
+      ],
+    );
+  }
+}
+
+class _PickerButtons extends StatelessWidget {
+  const _PickerButtons();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.read<PhotoPickerController>();
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () => controller.showImageSourceDialog(context),
+          style: AppTheme.themeData.elevatedButtonTheme.style?.copyWith(
+            minimumSize: MaterialStateProperty.all(
+              const Size(double.infinity, 50),
+            ),
+          ),
+          child: const Text('Pick from Gallery/Camera'),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => controller.navigateToLiveFeed(context),
+          child: const Text('Or use Live Camera Feed'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResultDisplay extends StatelessWidget {
+  const _ResultDisplay({required this.result});
+  final AnalysisResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final confidence = (result.confidence * 100).toStringAsFixed(2);
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              result.label,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              '$confidence%',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingOverlay extends StatelessWidget {
+  const _LoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withOpacity(0.5),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 }

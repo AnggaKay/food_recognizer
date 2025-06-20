@@ -1,31 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:foodrecognizer/controller/photo_picker_controller.dart';
+import 'package:foodrecognizer/firebase_options.dart';
 import 'package:foodrecognizer/service/gemini_service.dart';
 import 'package:foodrecognizer/service/ml_service.dart';
+import 'package:foodrecognizer/service/nutrition_repository.dart';
 import 'package:foodrecognizer/ui/photo_picker_screen.dart';
 import 'package:foodrecognizer/ui/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
 Future<void> main() async {
-  // Ensures that the Flutter app is initialized.
+  // Ensures that the Flutter binding is initialized before calling native code.
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  // Create single instances of the services that will be used across the app.
   final mlService = MLService();
-  await mlService.initialize();
+  final geminiService = GeminiService();
+
+  // Initialize services concurrently for a faster and non-blocking startup.
+  await Future.wait([
+    mlService.initialize(),
+    NutritionRepository()
+        .initialize(), // This is a singleton, it's safe to call.
+  ]);
+
+  // Create the controller with the already initialized service.
+  final photoPickerController = PhotoPickerController(mlService: mlService);
 
   runApp(
     MultiProvider(
       providers: [
+        // Use .value constructors for existing instances to avoid re-creation.
         Provider<MLService>.value(value: mlService),
-        Provider<GeminiService>(create: (_) => GeminiService()),
-        ChangeNotifierProvider(
-          create: (context) => PhotoPickerController(
-            mlService: Provider.of<MLService>(context, listen: false),
-          ),
-        ),
+        Provider<GeminiService>.value(value: geminiService),
+        ChangeNotifierProvider.value(value: photoPickerController),
       ],
       child: const MyApp(),
     ),

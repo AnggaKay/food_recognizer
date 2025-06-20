@@ -73,7 +73,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/tflite/
     - assets/labelmap.txt
+    - assets/data/nutrition_data.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
