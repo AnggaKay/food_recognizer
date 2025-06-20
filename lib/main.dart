@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:foodrecognizer/controller/photo_picker_controller.dart';
+import 'package:foodrecognizer/service/gemini_service.dart';
 import 'package:foodrecognizer/service/ml_service.dart';
 import 'package:foodrecognizer/ui/photo_picker_screen.dart';
 import 'package:foodrecognizer/ui/theme/app_theme.dart';
@@ -19,7 +20,12 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<MLService>.value(value: mlService),
-        ChangeNotifierProvider(create: (_) => PhotoPickerController()),
+        Provider<GeminiService>(create: (_) => GeminiService()),
+        ChangeNotifierProvider(
+          create: (context) => PhotoPickerController(
+            mlService: Provider.of<MLService>(context, listen: false),
+          ),
+        ),
       ],
       child: const MyApp(),
     ),
