@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "220425549325",
+    "project_id": "food-recognizer-51e4c",
+    "storage_bucket": "food-recognizer-51e4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:220425549325:android:71e8ef3e3f89cdb341c744",
+        "android_client_info": {
+          "package_name": "com.example.foodrecognizer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArWtcCN-Q2A_3b5zwB1pp8cUs_9QsiPmE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
